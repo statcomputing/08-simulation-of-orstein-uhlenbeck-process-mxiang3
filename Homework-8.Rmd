@@ -1,0 +1,161 @@
+---
+title: "Homework 8"
+author: "Meiruo Xiang"
+date: "10/29/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# 5.3.3 Orstein-Uhlenbeck Process
+
+### 1. Orstein-Uhlenbeck Process proof
+
+Orstein-Uhlenbeck Process: $dr(t)=\alpha(b-r(t))dt+\sigma dW_t$
+
+let $f(x_t, t)=r(t)e^{\alpha t}$
+
+By, Ito's fomula,
+
+$$
+\begin{aligned}
+df(r(t), t)&=\frac{\partial}{\partial t}(r(t)e^{\alpha t})dt+\frac{\partial}{\partial r(t)}(r(t)e^{\alpha t})dr(t)\\
+&=r(t)e^{\alpha t}\alpha dt+e^{\alpha t}dr(t)\\
+&=r(t)e^{\alpha t}\alpha dt+e^{\alpha t}*[\alpha(b-r(t))dt+\sigma dW_t]\\
+&=\alpha b e^{\alpha t} dt + e^{\alpha t}\sigma dW_t
+\end{aligned}
+$$
+
+Integral form 0 to t,
+
+$$
+\begin{aligned}
+r(t)e^{\alpha t}&=r(0)+\int_0^t \alpha b e^{\alpha s} ds+ \int_0^t e^{\alpha s}\sigma dW_s\\
+&=r(0)+ b(e^{\alpha t}-1)+\sigma \int_0^t e^{\alpha s} dW_s
+\end{aligned}
+$$
+
+so 
+
+$$
+\begin{aligned}
+r(t)&=r(0)e^{-\alpha t}+ b(1-e^{-\alpha t})+\sigma \int_0^t e^{-\alpha (t-s)} dW_s\\
+r(t+\Delta)&=r(0)e^{-\alpha (t+\Delta)}+ b(1-e^{-\alpha (t+\Delta)})+\sigma \int_0^{t+\Delta} e^{-\alpha (t+\Delta-s)} dW_s\\
+r(t+\Delta)-e^{-\alpha \Delta}r(t)&=b(1-e^{-\alpha \Delta})+\sigma \int_t^{t+\Delta} e^{-\alpha (t+\Delta-s)} dW_s\\
+\end{aligned}
+$$
+By property of Brownian motion,
+$W(s+\Delta s)-W(s)$ follows a normal distribution with mean 0.
+so $E[\int_t^{t+\Delta} e^{-\alpha (t+\Delta-s)} dW_s]=0$
+
+By Ito's isometry,
+
+$$
+\begin{aligned}
+Var[\int_t^{t+\Delta} e^{-\alpha (t+\Delta-s)} dW_s]
+&=E[(\int_t^{t+\Delta} e^{-\alpha (t+\Delta-s)} dW_s)^2]\\
+&=E[(\int_0^{\Delta} e^{-\alpha (\Delta-y)} dW_y)^2]\\
+&=E[\int_0^{\Delta} e^{-2\alpha (\Delta-y)} dy]\\
+&=e^{-2\alpha \Delta} \frac{1}{2\alpha}(e^{2\alpha \Delta}-1)\\
+&=\frac{1}{2\alpha}(1-e^{-2\alpha \Delta})\\
+\end{aligned}
+$$
+
+Therefore,
+$$
+\begin{aligned}
+r(t+\Delta)&=e^{-\alpha \Delta}r(t)+b(1-e^{-\alpha \Delta})+\sigma \int_t^{t+\Delta} e^{-\alpha (t+\Delta-s)} dW_s\\
+&=e^{-\alpha \Delta}r(t)+b(1-e^{-\alpha \Delta})+\sigma  \sqrt{\frac{1}{2\alpha}(1-e^{-2\alpha \Delta})}*Z, Z\sim N(0,1)
+\end{aligned}
+$$
+
+
+
+### 2. Implement a random walk.
+
+```{r}
+orstein <- function(alpha, sigma, b, r0 = 1, tmax = 500, delta = 1/500) {   
+  n <- tmax / delta
+  r <- numeric(n)
+  r[1] <- r0
+  for(i in 1:n) {   
+    r[i+1] <- exp(-alpha * delta) * r[i] + 
+              b * (1 - exp(-alpha * delta)) + 
+              sigma / sqrt(2 * alpha) * 
+              sqrt((1 - exp(-2 * alpha * delta))) * rnorm(1)
+  }
+  return(r[-1])
+}
+
+alpha <- c(0.1, 1, 5)
+sigma <- c(0.1, 0.2, 0.5)
+b <- c(-5, 5)
+
+# plot for each combinaiton of parameters
+par(mfrow=c(3,3))
+l <- 1
+for (i in 1:2) {
+  for (j in 1:3) {
+    for (k in 1:3) {
+      title <- paste('alpha=', alpha[j],
+                     'sigma=', sigma[k],
+                     'b=', b[i])
+      plot(ts(orstein(alpha[j], sigma[k], b[i]), frequency=500),type='l', 
+            ylab='Sample path', main = title, col = l)
+      l <- l + 1
+    }    
+  }  
+}
+
+```
+ 
+
+As $\alpha$ increase, the variance of path gets smaller, the line looks flatter.
+As $\sigma$ increase, the fluctuation of the oscillation gets larger, the amplitude is larger.
+
+### 3. Use the Euler–Maruyama method to approximate a simulation from the process.
+```{r}
+euler <- function(alpha = 0.1, sigma = 0.1, b = 5, r0, tmax = 1, delta) { 
+  size <- 1000
+  n <- tmax/delta
+  r <- matrix(0, size, n + 1)
+  r[, 1] <- r0
+  for (i in 1:size) {   
+      for (j in 1:n) {  
+        mean <- r[i, j] + alpha * (b - r[i, j]) * delta
+        sd <- sigma * delta
+        r[i, j + 1] <- rnorm(1, mean = mean, sd = sd)  
+      }
+  }
+  return(r[, dim(r)[2]])
+}
+
+
+r0 <- 1
+delta <- c(1, 0.5, 0.1, 0.01)
+alpha <- 0.1
+sigma <- 0.1
+b <- 5
+mu <- exp(-alpha * delta[1]) * r0 + b * (1 - exp(-alpha * delta[1]))
+sd <- sigma * sqrt((1 - exp(-2 * alpha * delta[1])) / (2 * alpha))
+
+
+for(i in 1:length(delta)){
+  simulate <- euler(r0 = r0, delta = delta[i])
+  title <- paste("Euler approximation with delta = ", delta[i])
+  hist(simulate, freq = F,
+       xlab = 'r', main = title)
+  lines(density(simulate), col = 1, lwd = 1)
+  curve(dnorm(x, mean=mu, sd=sd), col = 2, add = T)
+  legend('topright', legend = c("Simulated","True density"),
+          lwd = c(1, 1), col = c(1,2))
+}
+
+
+
+
+```
+
