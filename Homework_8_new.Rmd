@@ -2,11 +2,16 @@
 title: "Homework 8"
 author: "Meiruo Xiang"
 date: "10/29/2020"
-output: pdf_document
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(dpi=300,fig.width=7)
+knitr::opts_chunk$set(dev = "png", dev.args = list(type = "cairo-png"))
 ```
 
 
@@ -94,7 +99,7 @@ alpha <- c(0.1, 1, 5)
 sigma <- c(0.1, 0.2, 0.5)
 b <- c(-5, 5)
 
-# plot for each combinaiton of parameters
+# plot for each combination of parameters
 par(mfrow=c(3,3))
 l <- 1
 for (i in 1:2) {
